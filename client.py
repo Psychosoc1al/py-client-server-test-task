@@ -14,8 +14,15 @@ def send_file(file_path, host="127.0.0.1", port=12345):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((host, port))
 
-    client_socket.send(f"{filename},{filesize}".encode())
+    # Prepare metadata
+    file_info = f"{filename},{filesize}"
+    metadata_length = f"{len(file_info):<10}".encode()
 
+    # Send metadata length and metadata
+    client_socket.send(metadata_length)
+    client_socket.send(file_info.encode())
+
+    # Send file content
     with open(file_path, "rb") as f:
         while True:
             bytes_read = f.read(1024)
