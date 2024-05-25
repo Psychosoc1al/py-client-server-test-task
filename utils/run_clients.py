@@ -1,6 +1,7 @@
 import multiprocessing
 import os
 import subprocess
+import sys
 
 
 def run(
@@ -10,7 +11,7 @@ def run(
     port: int,
 ) -> None:
     result = subprocess.run(
-        ["python", script_path, file_path, host, str(port)],
+        [sys.executable, script_path, file_path, host, str(port)],
         capture_output=True,
         text=True,
     )
