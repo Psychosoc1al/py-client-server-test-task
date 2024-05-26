@@ -52,11 +52,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="File Transfer Server")
     parser.add_argument("directory", help="Directory to save received files")
     parser.add_argument(
+        "-h",
         "--host",
         default="0.0.0.0",
         help="Host to bind the server to (default: 0.0.0.0)",
     )
     parser.add_argument(
+        "-p",
         "--port",
         type=int,
         default=12345,
