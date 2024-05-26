@@ -1,46 +1,57 @@
-import socket
-import os
 import argparse
+import logging
+import os
+import socket
 
 import dotenv
 
 
 def send_metadata(file_path: str, client_socket: socket.socket) -> str:
-    filesize = os.path.getsize(file_path)
-    filename = os.path.basename(file_path)
+    try:
+        filesize = os.path.getsize(file_path)
+        filename = os.path.basename(file_path)
 
-    file_info = f"{filename}/{filesize}"
-    metadata_size = int(os.getenv("METADATA_LENGTH_SIZE"))
-    metadata_length = f"{len(file_info):<{metadata_size}}".encode()
+        file_info = f"{filename}/{filesize}"
+        metadata_size = int(os.getenv("METADATA_LENGTH_SIZE"))
+        metadata_length = f"{len(file_info):<{metadata_size}}".encode()
 
-    client_socket.sendall(metadata_length)
-    client_socket.sendall(file_info.encode())
+        client_socket.sendall(metadata_length)
+        client_socket.sendall(file_info.encode())
 
-    print(f"File {filename} metadata sent to server.")
-
-    return filename
+        logging.info(f"File {filename} metadata sent to server.")
+        return filename
+    except Exception as e:
+        logging.error(f"Error sending metadata: {e}")
+        raise
 
 
 def send_file(file_path: str, host: str, port: int) -> None:
     if not os.path.exists(file_path):
-        print(f"File {file_path} does not exist.")
+        logging.error(f"File {file_path} does not exist.")
         return
 
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((host, port))
+    client_socket = None
+    try:
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect((host, port))
 
-    filename = send_metadata(file_path, client_socket)
+        filename = send_metadata(file_path, client_socket)
 
-    read_size = int(os.getenv("CONNECTION_BUFSIZE"))
-    with open(file_path, "rb") as f:
-        while True:
-            bytes_read = f.read(read_size)
-            if not bytes_read:
-                break
-            client_socket.sendall(bytes_read)
+        read_size = int(os.getenv("CONNECTION_BUFSIZE"))
+        with open(file_path, "rb") as f:
+            while True:
+                bytes_read = f.read(read_size)
+                if not bytes_read:
+                    break
+                client_socket.sendall(bytes_read)
 
-    client_socket.close()
-    print(f"File {filename} sent to server.")
+        logging.info(f"File {filename} sent to server.")
+    except socket.error as e:
+        logging.error(f"Socket error: {e}")
+    except Exception as e:
+        logging.error(f"Error sending file: {e}")
+    finally:
+        client_socket.close()
 
 
 def main() -> None:
@@ -49,9 +60,18 @@ def main() -> None:
     parser.add_argument("host", help="Server IP address")
     parser.add_argument("port", type=int, help="Server port")
     args = parser.parse_args()
-    send_file(args.file_path, args.host, args.port)
+
+    try:
+        send_file(args.file_path, args.host, args.port)
+    except Exception as e:
+        logging.error(f"Failed to send file: {e}")
 
 
 if __name__ == "__main__":
     dotenv.load_dotenv()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
     main()
