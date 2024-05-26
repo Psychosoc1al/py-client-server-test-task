@@ -6,7 +6,7 @@ from datetime import datetime
 import dotenv
 
 
-def receive_filename(client_socket: socket.socket) -> str:
+def receive_metadata(client_socket: socket.socket) -> str:
     metadata_size = int(os.getenv("METADATA_LENGTH_SIZE"))
     metadata_length = int(client_socket.recv(metadata_size).decode().strip())
 
@@ -19,7 +19,7 @@ def receive_filename(client_socket: socket.socket) -> str:
     return filename
 
 
-def start_server(directory: str, host: str = "0.0.0.0", port: int = 12345) -> None:
+def start_server(directory: str, host: str, port: int) -> None:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -31,7 +31,7 @@ def start_server(directory: str, host: str = "0.0.0.0", port: int = 12345) -> No
         client_socket, addr = server_socket.accept()
         print(f"Connection from {addr}")
 
-        filename = receive_filename(client_socket)
+        filename = receive_metadata(client_socket)
 
         filepath = os.path.join(directory, filename)
         with open(filepath, "wb") as f:
@@ -51,8 +51,19 @@ def start_server(directory: str, host: str = "0.0.0.0", port: int = 12345) -> No
 def main() -> None:
     parser = argparse.ArgumentParser(description="File Transfer Server")
     parser.add_argument("directory", help="Directory to save received files")
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host to bind the server to (default: 0.0.0.0)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=12345,
+        help="Port to bind the server to (default: 12345)",
+    )
     args = parser.parse_args()
-    start_server(args.directory)
+    start_server(args.directory, args.host, args.port)
 
 
 if __name__ == "__main__":
