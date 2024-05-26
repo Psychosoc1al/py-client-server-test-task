@@ -12,20 +12,20 @@ def generate_text_file(filename: str, size_kb: int) -> None:
 
 
 def generate_files(sizes_kb: list[int]) -> None:
-    if not os.path.exists("./test_files"):
-        os.makedirs("./test_files")
+    if not os.path.exists("../test_files"):
+        os.makedirs("../test_files")
 
     files_num = len(sizes_kb)
     for i in range(files_num):
         size = sizes_kb[i]
-        filename = os.path.join("./test_files", f"test_file_{size}.txt")
+        filename = os.path.join("../test_files", f"test_file_{size}.txt")
 
         generate_text_file(filename, size)
         print(f"Generated {filename} with size {size}KB")
 
 
 def main() -> None:
-    sizes_kb = [1, 5, 10, 50, 100, 500, 1000, 100000]
+    sizes_kb = [1, 5, 10, 50, 100, 500, 1000, 10000, 100000]
 
     generate_files(sizes_kb)
 

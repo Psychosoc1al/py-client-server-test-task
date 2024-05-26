@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import random
 import subprocess
 import sys
 
@@ -10,6 +11,7 @@ def run(
     host: str,
     port: int,
 ) -> None:
+    file_path += f"{'0' * random.randint(0, 2)}.txt"
     result = subprocess.run(
         [sys.executable, script_path, file_path, host, str(port)],
         capture_output=True,
@@ -20,9 +22,9 @@ def run(
 
 
 def main() -> None:
-    runs_num = 6
+    runs_num = 15
     script_path = os.path.abspath("../client.py")
-    file_path = "../test_files/test_file_100000.txt"
+    file_path = "../test_files/test_file_1000"
     host = "127.0.0.1"
     port = 12345
 
