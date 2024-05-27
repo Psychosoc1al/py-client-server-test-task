@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import random
 import socket
 from datetime import datetime
 
@@ -9,7 +8,23 @@ import dotenv
 import select
 
 
-def receive_metadata(client_socket: socket.socket) -> tuple[str, int]:
+def generate_unique_filename(directory: str, filename: str) -> str:
+    name, ext = os.path.splitext(filename)
+    files_in_directory = os.listdir(directory)
+
+    same_name_count = sum(
+        1
+        for f in files_in_directory
+        if f.startswith(f"{name} (") and f.endswith(f"){ext}") or f == filename
+    )
+
+    if same_name_count:
+        filename = f"{name} ({same_name_count}){ext}"
+
+    return filename
+
+
+def receive_metadata(client_socket: socket.socket, directory: str) -> tuple[str, int]:
     try:
         metadata_size = int(os.getenv("METADATA_LENGTH_SIZE"))
         metadata_length_data = client_socket.recv(metadata_size)
@@ -22,7 +37,7 @@ def receive_metadata(client_socket: socket.socket) -> tuple[str, int]:
             raise ConnectionError("Socket closed prematurely")
 
         filename, filesize = file_info_data.decode().split("/")
-        filename = f"{random.randint(0, 10000)}{filename}"
+        filename = generate_unique_filename(directory, filename)
         filesize = int(filesize)
         logging.info(f"Receiving {filename} ({filesize} bytes)")
         return filename, filesize
@@ -52,7 +67,7 @@ def handle_metadata_reception(
     connection: dict[str], client_socket: socket.socket, directory: str
 ) -> None:
     try:
-        filename, filesize = receive_metadata(client_socket)
+        filename, filesize = receive_metadata(client_socket, directory)
         filepath = os.path.join(directory, filename)
         file = open(filepath, "wb")
         connection.update(
