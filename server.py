@@ -3,71 +3,142 @@ import logging
 import os
 import random
 import socket
-import select
 from datetime import datetime
 
 import dotenv
+import select
 
 
-def receive_metadata(client_socket: socket.socket) -> str:
+def receive_metadata(client_socket: socket.socket) -> tuple[str, int]:
     try:
         metadata_size = int(os.getenv("METADATA_LENGTH_SIZE"))
-        metadata_length_data = b""
-        while len(metadata_length_data) < metadata_size:
-            try:
-                chunk = client_socket.recv(metadata_size - len(metadata_length_data))
-                if not chunk:
-                    raise ConnectionError("Socket closed prematurely")
-                metadata_length_data += chunk
-            except BlockingIOError:
-                continue
+        metadata_length_data = client_socket.recv(metadata_size)
+        if not metadata_length_data:
+            raise ConnectionError("Socket closed prematurely")
 
         metadata_length = int(metadata_length_data.decode().strip())
+        file_info_data = client_socket.recv(metadata_length)
+        if not file_info_data:
+            raise ConnectionError("Socket closed prematurely")
 
-        file_info_data = b""
-        while len(file_info_data) < metadata_length:
-            try:
-                chunk = client_socket.recv(metadata_length - len(file_info_data))
-                if not chunk:
-                    raise ConnectionError("Socket closed prematurely")
-                file_info_data += chunk
-            except BlockingIOError:
-                continue
-
-        file_info = file_info_data.decode()
-        filename, filesize = file_info.split("/")
-        filename = str(random.randint(0, 10000)) + filename
+        filename, filesize = file_info_data.decode().split("/")
+        filename = f"{random.randint(0, 10000)}{filename}"
         filesize = int(filesize)
         logging.info(f"Receiving {filename} ({filesize} bytes)")
-
-        return filename
+        return filename, filesize
     except Exception as e:
         logging.error(f"Error receiving metadata: {e}")
         raise
 
 
-def receive_file(client_socket: socket.socket, directory: str, bufsize: int) -> None:
+def handle_new_connection(
+    epoll: select.epoll, server_socket: socket.socket, connections: dict[int, dict]
+) -> None:
+    client_socket, addr = server_socket.accept()
+    logging.info(f"Connection from {addr}")
+    client_socket.setblocking(False)
+    epoll.register(client_socket.fileno(), select.EPOLLIN)
+    connections[client_socket.fileno()] = {
+        "socket": client_socket,
+        "state": "RECEIVE_METADATA",
+        "file": None,
+        "filename": None,
+        "filesize": 0,
+        "received": 0,
+    }
+
+
+def handle_metadata_reception(
+    connection: dict[str], client_socket: socket.socket, directory: str
+) -> None:
     try:
-        filename = receive_metadata(client_socket)
+        filename, filesize = receive_metadata(client_socket)
         filepath = os.path.join(directory, filename)
-        with open(filepath, "wb") as f:
-            while True:
-                try:
-                    chunk = client_socket.recv(bufsize)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                except BlockingIOError:
-                    continue
-
-        with open(os.path.join(directory, "file_attributes.txt"), "a") as attr_file:
-            attr_file.write(f"{datetime.now().isoformat()},{filename}\n")
-
-        logging.info(f"File {filename} received and saved.")
+        file = open(filepath, "wb")
+        connection.update(
+            {
+                "state": "RECEIVE_FILE",
+                "file": file,
+                "filename": filename,
+                "filesize": filesize,
+            }
+        )
     except Exception as e:
-        logging.error(f"Error handling file transfer: {e}")
-    finally:
-        client_socket.close()
+        logging.error(f"Error in metadata reception: {e}")
+        cleanup_connection(connection, client_socket)
+
+
+def handle_file_reception(
+    connection: dict[str],
+    client_socket: socket.socket,
+    epoll: select.epoll,
+    descriptor_no: int,
+    directory: str,
+    bufsize: int,
+) -> None:
+    try:
+        chunk = client_socket.recv(bufsize)
+        if chunk:
+            connection["file"].write(chunk)
+            connection["received"] += len(chunk)
+            if connection["received"] >= connection["filesize"]:
+                finalize_file_reception(connection, directory)
+                cleanup_connection(connection, client_socket, epoll, descriptor_no)
+        else:
+            cleanup_connection(connection, client_socket, epoll, descriptor_no)
+    except BlockingIOError:
+        return
+    except Exception as e:
+        logging.error(f"Error in file reception: {e}")
+        cleanup_connection(connection, client_socket, epoll, descriptor_no)
+
+
+def cleanup_connection(
+    connection: dict[str],
+    client_socket: socket.socket,
+    epoll: select.epoll = None,
+    descriptor_no: int = None,
+) -> None:
+    if connection["file"]:
+        connection["file"].close()
+    if epoll and descriptor_no:
+        epoll.unregister(descriptor_no)
+    client_socket.close()
+
+
+def finalize_file_reception(connection: dict[str], directory: str) -> None:
+    connection["file"].close()
+    logging.info(f"File {connection['filename']} received and saved.")
+    with open(os.path.join(directory, "file_attributes.txt"), "a") as attr_file:
+        attr_file.write(f"{datetime.now().isoformat()},{connection['filename']}\n")
+
+
+def handle_event(
+    descriptor_no: int,
+    event: int,
+    epoll: select.epoll,
+    server_socket: socket.socket,
+    connections: dict[int, dict[str]],
+    directory: str,
+    bufsize: int,
+) -> None:
+    if descriptor_no == server_socket.fileno():
+        handle_new_connection(epoll, server_socket, connections)
+    elif event & select.EPOLLIN:
+        connection = connections[descriptor_no]
+        client_socket = connection["socket"]
+
+        if connection["state"] == "RECEIVE_METADATA":
+            handle_metadata_reception(connection, client_socket, directory)
+        if connection["state"] == "RECEIVE_FILE":
+            handle_file_reception(
+                connection,
+                client_socket,
+                epoll,
+                descriptor_no,
+                directory,
+                bufsize,
+            )
 
 
 def start_server(directory: str, host: str, port: int) -> None:
@@ -85,23 +156,21 @@ def start_server(directory: str, host: str, port: int) -> None:
 
     bufsize = int(os.getenv("CONNECTION_BUFSIZE"))
     connections = {}
+
     try:
         logging.info(f"Server listening on {host}:{port}")
         while True:
             events = epoll.poll()
             for descriptor_no, event in events:
-                if descriptor_no == server_socket.fileno():
-                    client_socket, addr = server_socket.accept()
-                    logging.info(f"Connection from {addr}")
-                    client_socket.setblocking(False)
-                    epoll.register(client_socket.fileno(), select.EPOLLIN)
-                    connections[client_socket.fileno()] = client_socket
-                elif event & select.EPOLLIN:
-                    client_socket = connections[descriptor_no]
-                    epoll.unregister(descriptor_no)
-                    receive_file(client_socket, directory, bufsize)
-                    del connections[descriptor_no]
-
+                handle_event(
+                    descriptor_no,
+                    event,
+                    epoll,
+                    server_socket,
+                    connections,
+                    directory,
+                    bufsize,
+                )
     except Exception as e:
         logging.error(f"Server error: {e}")
     finally:
@@ -137,8 +206,7 @@ def main() -> None:
 if __name__ == "__main__":
     dotenv.load_dotenv()
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
     main()
