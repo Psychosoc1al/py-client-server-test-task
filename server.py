@@ -9,6 +9,17 @@ import select
 
 
 def generate_unique_filename(directory: str, filename: str) -> str:
+    """
+    Generates a unique filename in the specified directory by appending a number
+    if a file with the same name already exists.
+
+    Args:
+        directory: The directory where the file will be saved.
+        filename: The original filename.
+
+    Returns:
+        A unique filename with an appended number if needed.
+    """
     name, ext = os.path.splitext(filename)
     files_in_directory = os.listdir(directory)
 
@@ -25,6 +36,16 @@ def generate_unique_filename(directory: str, filename: str) -> str:
 
 
 def receive_metadata(client_socket: socket.socket, directory: str) -> tuple[str, int]:
+    """
+    Receives metadata from the client socket, including the filename and filesize.
+
+    Args:
+        client_socket: The socket connected to the client.
+        directory: The directory where the file will be saved.
+
+    Returns:
+        A tuple containing the unique filename and filesize.
+    """
     try:
         metadata_size = int(os.getenv("METADATA_LENGTH_SIZE"))
         metadata_length_data = client_socket.recv(metadata_size)
@@ -49,8 +70,21 @@ def receive_metadata(client_socket: socket.socket, directory: str) -> tuple[str,
 def handle_new_connection(
     epoll: select.epoll, server_socket: socket.socket, connections: dict[int, dict]
 ) -> None:
+    """
+    Handles a new incoming connection by accepting it, setting it to non-blocking,
+    and registering it with epoll.
+
+    Args:
+        epoll: The epoll object for managing multiple connections.
+        server_socket: The server socket accepting new connections.
+        connections: A dictionary tracking active connections.
+
+    Returns:
+        None
+    """
     client_socket, addr = server_socket.accept()
     logging.info(f"Connection from {addr}")
+
     client_socket.setblocking(False)
     epoll.register(client_socket.fileno(), select.EPOLLIN)
     connections[client_socket.fileno()] = {
@@ -66,6 +100,17 @@ def handle_new_connection(
 def handle_metadata_reception(
     connection: dict[str], client_socket: socket.socket, directory: str
 ) -> None:
+    """
+    Handles the reception of metadata from the client, including the filename and filesize.
+
+    Args:
+        connection: A dictionary containing connection-specific information.
+        client_socket: The socket connected to the client.
+        directory: The directory where the file will be saved.
+
+    Returns:
+        None
+    """
     try:
         filename, filesize = receive_metadata(client_socket, directory)
         filepath = os.path.join(directory, filename)
@@ -91,6 +136,20 @@ def handle_file_reception(
     directory: str,
     bufsize: int,
 ) -> None:
+    """
+    Handles the reception of the actual file data from the client.
+
+    Args:
+        connection: A dictionary containing connection-specific information.
+        client_socket: The socket connected to the client.
+        epoll: The epoll object for managing multiple connections.
+        descriptor_no: The file descriptor number for the connection.
+        directory: The directory where the file will be saved.
+        bufsize: The buffer size for receiving data.
+
+    Returns:
+        None
+    """
     try:
         chunk = client_socket.recv(bufsize)
         if chunk:
@@ -114,6 +173,19 @@ def cleanup_connection(
     epoll: select.epoll = None,
     descriptor_no: int = None,
 ) -> None:
+    """
+    Cleans up the connection by closing the file and the client socket,
+    and unregistering from epoll if provided.
+
+    Args:
+        connection: A dictionary containing connection-specific information.
+        client_socket: The socket connected to the client.
+        epoll: The epoll object for managing multiple connections (optional).
+        descriptor_no: The file descriptor number for the connection (optional).
+
+    Returns:
+        None
+    """
     if connection["file"]:
         connection["file"].close()
     if epoll and descriptor_no:
@@ -122,6 +194,16 @@ def cleanup_connection(
 
 
 def finalize_file_reception(connection: dict[str], directory: str) -> None:
+    """
+    Finalizes the file reception by closing the file and logging the received file's details.
+
+    Args:
+        connection: A dictionary containing connection-specific information.
+        directory: The directory where the file is saved.
+
+    Returns:
+        None
+    """
     connection["file"].close()
     logging.info(f"File {connection['filename']} received and saved.")
     with open(os.path.join(directory, "file_attributes.txt"), "a") as attr_file:
@@ -137,6 +219,21 @@ def handle_event(
     directory: str,
     bufsize: int,
 ) -> None:
+    """
+    Handles different events such as new connections and data reception.
+
+    Args:
+        descriptor_no: The file descriptor number for the connection.
+        event: The event mask indicating the type of event.
+        epoll: The epoll object for managing multiple connections.
+        server_socket: The server socket accepting new connections.
+        connections: A dictionary tracking active connections.
+        directory: The directory where the file will be saved.
+        bufsize: The buffer size for receiving data.
+
+    Returns:
+        None
+    """
     if descriptor_no == server_socket.fileno():
         handle_new_connection(epoll, server_socket, connections)
     elif event & select.EPOLLIN:
@@ -157,6 +254,18 @@ def handle_event(
 
 
 def start_server(directory: str, host: str, port: int) -> None:
+    """
+    Starts the file transfer server, setting up the server socket, epoll object,
+    and entering the main event loop.
+
+    Args:
+        directory: The directory where the file will be saved.
+        host: The host address to bind the server to.
+        port: The port number to bind the server to.
+
+    Returns:
+        None
+    """
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -219,7 +328,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+    dotenv.load_dotenv(
+        os.path.join(os.path.dirname(__file__), ".env")  # must-have for binary
+    )
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
