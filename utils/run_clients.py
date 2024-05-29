@@ -16,7 +16,7 @@ def run(
 ) -> None:
     file_path = os.path.join(files_dir, f"test_file_{random.choice(files_sizes)}.txt")
     result = subprocess.run(
-        [sys.executable, script_path, file_path, host, str(port)],
+        [sys.executable, "cli", script_path, file_path, host, str(port)],
         capture_output=True,
         text=True,
     )

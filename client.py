@@ -19,8 +19,8 @@ def main_cli(file_path: str, host: str, port: int) -> None:
 
 def main_gui() -> None:
     app = QApplication([])
-    client = client_gui.FileTransferClientGUI()
-    client.show()
+    client_gui.FileTransferClientGUI()
+
     app.exec()
 
 
