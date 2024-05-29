@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import socket
+import sys
 from datetime import datetime
 
 import dotenv
@@ -78,9 +79,6 @@ def handle_new_connection(
         epoll: The epoll object for managing multiple connections.
         server_socket: The server socket accepting new connections.
         connections: A dictionary tracking active connections.
-
-    Returns:
-        None
     """
     client_socket, addr = server_socket.accept()
     logging.info(f"Connection from {addr}")
@@ -107,9 +105,6 @@ def handle_metadata_reception(
         connection: A dictionary containing connection-specific information.
         client_socket: The socket connected to the client.
         directory: The directory where the file will be saved.
-
-    Returns:
-        None
     """
     try:
         filename, filesize = receive_metadata(client_socket, directory)
@@ -146,9 +141,6 @@ def handle_file_reception(
         descriptor_no: The file descriptor number for the connection.
         directory: The directory where the file will be saved.
         bufsize: The buffer size for receiving data.
-
-    Returns:
-        None
     """
     try:
         chunk = client_socket.recv(bufsize)
@@ -182,9 +174,6 @@ def cleanup_connection(
         client_socket: The socket connected to the client.
         epoll: The epoll object for managing multiple connections (optional).
         descriptor_no: The file descriptor number for the connection (optional).
-
-    Returns:
-        None
     """
     if connection["file"]:
         connection["file"].close()
@@ -200,9 +189,6 @@ def finalize_file_reception(connection: dict[str], directory: str) -> None:
     Args:
         connection: A dictionary containing connection-specific information.
         directory: The directory where the file is saved.
-
-    Returns:
-        None
     """
     connection["file"].close()
     logging.info(f"File {connection['filename']} received and saved.")
@@ -230,9 +216,6 @@ def handle_event(
         connections: A dictionary tracking active connections.
         directory: The directory where the file will be saved.
         bufsize: The buffer size for receiving data.
-
-    Returns:
-        None
     """
     if descriptor_no == server_socket.fileno():
         handle_new_connection(epoll, server_socket, connections)
@@ -262,9 +245,6 @@ def start_server(directory: str, host: str, port: int) -> None:
         directory: The directory where the file will be saved.
         host: The host address to bind the server to.
         port: The port number to bind the server to.
-
-    Returns:
-        None
     """
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -328,9 +308,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    dotenv.load_dotenv(
-        os.path.join(os.path.dirname(__file__), ".env")  # must-have for binary
-    )
+    # The block below is necessary for loading .env file both in script and executable
+    env_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    if getattr(sys, "frozen", False):
+        # noinspection PyUnresolvedReferences,PyProtectedMember
+        env_dir = sys._MEIPASS
+    dotenv.load_dotenv(dotenv_path=os.path.join(env_dir, ".env"))
+
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
