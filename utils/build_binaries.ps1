@@ -4,7 +4,7 @@
 wsl -e bash -c "
 source ../.venv/debian-venv/bin/activate &&
 python -m PyInstaller \
-    --noconfirm \
+    --clean \
     --onefile \
     --add-data=../.env:. \
     --specpath=../build \
@@ -17,7 +17,7 @@ Write-Output `n`n
 
 wsl -e bash -c "
 python -m PyInstaller \
-    --noconfirm \
+    --clean \
     --onefile \
     --add-data=../.env:. \
     --specpath=../build \
