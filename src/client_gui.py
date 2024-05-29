@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QMainWindow,
     QWidget,
+    QApplication,
 )
 
 import client_cli
@@ -20,6 +21,7 @@ class FileTransferClientGUI(QMainWindow):
         """Initializes the FileTransferClientGUI class."""
         super().__init__()
         self._init_ui()
+        self._center_window()
 
         self.show()
 
@@ -103,3 +105,14 @@ class FileTransferClientGUI(QMainWindow):
             self.send_button.setEnabled(True)
         else:
             self.send_button.setDisabled(True)
+
+    def _center_window(self) -> None:
+        if self.isMaximized():
+            return
+
+        screen_geometry = QApplication.primaryScreen().availableGeometry()
+        window_geometry = self.frameGeometry()
+        center_point = screen_geometry.center()
+        window_geometry.moveCenter(center_point)
+
+        self.move(window_geometry.topLeft())
