@@ -1,5 +1,4 @@
 import qdarktheme
-from PyQt6 import QtCore
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QLabel,
@@ -29,10 +28,7 @@ class FileTransferClientGUI(QMainWindow):
         qdarktheme.setup_theme(custom_colors={"primary": "#d79df1"})
 
         self.setWindowTitle("File Transfer Client")
-        self.setMinimumSize(300, 300)
-        self.setWindowFlags(
-            self.windowFlags() & ~QtCore.Qt.WindowType.WindowMaximizeButtonHint
-        )
+        self.setFixedSize(300, 300)
 
         self.main_widget = QWidget()
         layout = QVBoxLayout()
