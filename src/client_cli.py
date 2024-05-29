@@ -47,9 +47,6 @@ def send_file(file_path: str, host: str, port: int) -> None:
         host: The IP address of the server.
         port: The port number of the server.
 
-    Returns:
-        None
-
     Raises:
         socket.error: If the connection to the server cannot be established.
 

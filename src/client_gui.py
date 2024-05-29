@@ -15,13 +15,17 @@ import client_cli
 
 
 class FileTransferClientGUI(QMainWindow):
+    """A GUI application for transferring files using PyQt6."""
+
     def __init__(self):
+        """Initializes the FileTransferClientGUI class."""
         super().__init__()
         self._init_ui()
 
         self.show()
 
     def _init_ui(self) -> None:
+        """Initializes the user interface."""
         qdarktheme.setup_theme(custom_colors={"primary": "#d79df1"})
 
         self.setWindowTitle("File Transfer Client")
@@ -67,12 +71,22 @@ class FileTransferClientGUI(QMainWindow):
         self.setCentralWidget(self.main_widget)
 
     def _browse_file(self) -> None:
+        """
+        Opens a file dialog to browse and select a file.
+
+        Sets the selected file path in the file input line edit.
+        """
         file_name, _ = QFileDialog.getOpenFileName(self, "Open File")
 
         if file_name:
             self.file_input.setText(file_name)
 
     def _send_file(self) -> None:
+        """
+        Sends the selected file to the specified host and port.
+
+        Displays a success or error message based on the result of the file transfer.
+        """
         file_path = self.file_input.text()
         host = self.host_input.text()
         port = int(self.port_input.text())
@@ -84,6 +98,11 @@ class FileTransferClientGUI(QMainWindow):
             QMessageBox.critical(self, "Error", f"Failed to send file: {e}")
 
     def _handle_button_state(self) -> None:
+        """
+        Enables or disables the send button based on the input fields.
+
+        The send button is enabled only if the file, host, and port fields are not empty.
+        """
         if self.file_input.text() and self.host_input.text() and self.port_input.text():
             self.send_button.setEnabled(True)
         else:

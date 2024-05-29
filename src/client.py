@@ -44,9 +44,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    dotenv.load_dotenv(
-        os.path.join(os.path.dirname(__file__), ".env")  # must-have for binary
-    )
+    # The block below is necessary for loading .env file both in script and executable
+    env_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    if getattr(sys, "frozen", False):
+        # noinspection PyUnresolvedReferences,PyProtectedMember
+        env_dir = sys._MEIPASS
+    dotenv.load_dotenv(dotenv_path=os.path.join(env_dir, ".env"))
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
