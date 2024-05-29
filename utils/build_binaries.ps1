@@ -7,10 +7,11 @@ python -m PyInstaller \
     --clean \
     --onefile \
     --add-data=../.env:. \
+    --icon=../icons/server.ico \
     --specpath=../build \
     --workpath=../build \
     --distpath=../Debian-12-dist \
-    ../src/client.py
+    ../src/server.py
 "
 
 Write-Output `n`n
@@ -21,8 +22,10 @@ python -m PyInstaller \
     --clean \
     --onefile \
     --add-data=../.env:. \
+    --add-data=../icons/client.ico:icons \
+    --icon=../icons/client.ico \
     --specpath=../build \
     --workpath=../build \
     --distpath=../Debian-12-dist \
-    ../src/server.py
+    ../src/client.py
 "
