@@ -249,19 +249,19 @@ def start_server(directory: str, host: str, port: int) -> None:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind((host, port))
-    server_socket.listen(socket.SOMAXCONN)
-    server_socket.setblocking(False)
-
-    epoll = select.epoll()
-    epoll.register(server_socket.fileno(), select.EPOLLIN)
-
-    bufsize = int(os.getenv("CONNECTION_BUFSIZE"))
-    connections = {}
-
     try:
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_socket.bind((host, port))
+        server_socket.listen(socket.SOMAXCONN)
+        server_socket.setblocking(False)
+
+        epoll = select.epoll()
+        epoll.register(server_socket.fileno(), select.EPOLLIN)
+
+        bufsize = int(os.getenv("CONNECTION_BUFSIZE"))
+        connections = {}
+
         logging.info(f"Server listening on {host}:{port}")
         while True:
             events = epoll.poll()
@@ -308,15 +308,18 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # The block below is necessary for loading .env file both in script and executable
-    env_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-    if getattr(sys, "frozen", False):
-        # noinspection PyUnresolvedReferences,PyProtectedMember
-        env_dir = sys._MEIPASS
-    dotenv.load_dotenv(dotenv_path=os.path.join(env_dir, ".env"))
+    try:
+        # The block below is necessary for loading .env file both in script and executable
+        env_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        if getattr(sys, "frozen", False):
+            # noinspection PyUnresolvedReferences,PyProtectedMember
+            env_dir = sys._MEIPASS
+        dotenv.load_dotenv(dotenv_path=os.path.join(env_dir, ".env"))
 
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+        logging.basicConfig(
+            level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+        )
 
-    main()
+        main()
+    except KeyboardInterrupt:
+        logging.info("Stopping server...")
