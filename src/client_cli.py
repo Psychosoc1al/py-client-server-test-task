@@ -46,7 +46,8 @@ def send_file(
     Send a file to a server.
 
     This function establishes a connection to the server, sends the file metadata,
-    and then sends the file in chunks.
+    and then sends the file in chunks. If the GUI progress handler is provided,
+    it will be used to update the progress bar of the sending process.
 
     Args:
         file_path: The path of the file to be sent.
