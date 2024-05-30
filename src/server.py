@@ -249,6 +249,7 @@ def start_server(directory: str, host: str, port: int) -> None:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
+    epoll = server_socket = None
     try:
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
