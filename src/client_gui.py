@@ -1,3 +1,5 @@
+import logging
+
 import qdarktheme
 from PyQt6.QtWidgets import (
     QVBoxLayout,
@@ -103,9 +105,11 @@ class FileTransferClientGUI(QMainWindow):
 
             QMessageBox.information(self, "Success", "File sent successfully")
         except InterruptedError as e:
+            logging.warning(str(e))
             QMessageBox.warning(self, "Warning", str(e))
         except Exception as e:
             self._send_progress_dialog.close()
+            logging.error(f"Failed to send file: {e}")
             QMessageBox.critical(self, "Error", f"Failed to send file: {e}")
 
     def _handle_button_state(self) -> None:
