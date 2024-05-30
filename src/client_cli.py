@@ -1,9 +1,10 @@
-import argparse
 import logging
 import os
 import socket
 
-import dotenv
+import tqdm
+
+from gui_progress_handler import ProgressHandler
 
 
 def send_metadata(file_path: str, client_socket: socket.socket) -> str:
@@ -38,20 +39,24 @@ def send_metadata(file_path: str, client_socket: socket.socket) -> str:
     return filename
 
 
-def send_file(file_path: str, host: str, port: int) -> None:
+def send_file(
+    file_path: str, host: str, port: int, gui_progress_handler: ProgressHandler = None
+) -> None:
     """
     Send a file to a server.
 
     This function establishes a connection to the server, sends the file metadata,
-    and then sends the file in chunks.
+    and then sends the file in chunks. If the GUI progress handler is provided,
+    it will be used to update the progress bar of the sending process.
 
     Args:
         file_path: The path of the file to be sent.
         host: The IP address of the server.
         port: The port number of the server.
+        gui_progress_handler: The GUI progress handler for updating the progress bar of sending the file.
 
-    Returns:
-        None
+    Raises:
+        socket.error: If the connection to the server cannot be established.
 
     Notes:
         CONNECTION_BUFSIZE is an environment variable that specifies the buffer size
@@ -61,40 +66,26 @@ def send_file(file_path: str, host: str, port: int) -> None:
         logging.error(f"File {file_path} does not exist.")
         return
 
-    try:
-        with socket.create_connection((host, port)) as client_socket:
-            filename = send_metadata(file_path, client_socket)
+    with socket.create_connection((host, port)) as client_socket:
+        filename = send_metadata(file_path, client_socket)
 
-            read_size = int(os.getenv("CONNECTION_BUFSIZE"))
-            with open(file_path, "rb") as f:
-                for chunk in iter(lambda: f.read(read_size), b""):
-                    client_socket.sendall(chunk)
+        read_size = int(os.getenv("CONNECTION_BUFSIZE"))
+        file_size = os.path.getsize(file_path)
 
-            logging.info(f"File {filename} sent to server.")
-    except (socket.error, Exception) as e:
-        logging.error(f"Error sending file: {e}")
+        if gui_progress_handler:
+            gui_progress_handler.set_goal(file_size)
 
+        with open(file_path, "rb") as f, tqdm.tqdm(
+            desc="Sending file", total=file_size, ncols=80, unit="B", unit_scale=True
+        ) as pbar:
+            while True:
+                chunk = f.read(read_size)
+                if not chunk:
+                    break
+                client_socket.sendall(chunk)
+                pbar.update(read_size)
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="File Transfer Client")
-    parser.add_argument("file_path", help="Path of the file to transfer")
-    parser.add_argument("host", help="Server IP address")
-    parser.add_argument("port", type=int, help="Server port")
-    args = parser.parse_args()
+                if gui_progress_handler:
+                    gui_progress_handler.update_progress(read_size)
 
-    try:
-        send_file(args.file_path, args.host, args.port)
-    except Exception as e:
-        logging.error(f"Failed to send file: {e}")
-
-
-if __name__ == "__main__":
-    dotenv.load_dotenv(
-        os.path.join(os.path.dirname(__file__), ".env")  # must-have for binary
-    )
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-    )
-
-    main()
+        logging.info(f"File {filename} sent to server.")

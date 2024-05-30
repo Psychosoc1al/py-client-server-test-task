@@ -16,7 +16,7 @@ def run(
 ) -> None:
     file_path = os.path.join(files_dir, f"test_file_{random.choice(files_sizes)}.txt")
     result = subprocess.run(
-        [sys.executable, script_path, file_path, host, str(port)],
+        [sys.executable, script_path, "cli", file_path, host, str(port)],
         capture_output=True,
         text=True,
     )
@@ -26,7 +26,7 @@ def run(
 
 def main() -> None:
     runs_num = 20
-    script_path = os.path.abspath("../client.py")
+    script_path = os.path.abspath("../src/client.py")
     files_dir = "../test_files"
     files_sizes = [int(size) for size in os.getenv("TEST_FILES_LENGTHS_KIB").split()]
     host = "127.0.0.1"
