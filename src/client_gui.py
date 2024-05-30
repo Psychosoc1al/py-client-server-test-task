@@ -19,14 +19,13 @@ from gui_progress_handler import ProgressHandler
 class FileTransferClientGUI(QMainWindow):
     """A GUI application for transferring files using PyQt6."""
 
+    _send_progress_dialog: QProgressDialog = None
+
     def __init__(self):
         """Initializes the FileTransferClientGUI class."""
         super().__init__()
         self._init_ui()
         self._center_window()
-
-        self._send_progress_dialog: QProgressDialog | None = None
-        self._progress_handler = ProgressHandler()
 
         self.show()
 
@@ -60,6 +59,10 @@ class FileTransferClientGUI(QMainWindow):
         self._send_button = QPushButton("Send", self.main_widget)
         self._send_button.clicked.connect(self._handle_button_click)
         self._send_button.setDisabled(True)
+
+        self._file_input.returnPressed.connect(self._send_button.click)
+        self._host_input.returnPressed.connect(self._send_button.click)
+        self._port_input.returnPressed.connect(self._send_button.click)
 
         layout.addWidget(self._file_label)
         layout.addWidget(self._file_input)
@@ -96,14 +99,13 @@ class FileTransferClientGUI(QMainWindow):
         port = int(self._port_input.text())
 
         try:
-            self._send_progress_dialog.show()
-
             client_cli.send_file(file_path, host, port, self._progress_handler)
 
             QMessageBox.information(self, "Success", "File sent successfully")
         except InterruptedError as e:
             QMessageBox.warning(self, "Warning", str(e))
         except Exception as e:
+            self._send_progress_dialog.close()
             QMessageBox.critical(self, "Error", f"Failed to send file: {e}")
 
     def _handle_button_state(self) -> None:
@@ -122,19 +124,28 @@ class FileTransferClientGUI(QMainWindow):
             self._send_button.setDisabled(True)
 
     def _handle_button_click(self) -> None:
+        """
+        Handles the click event of the send button to send the selected file.
+
+        Displays a progress dialog while the file transfer is in progress.
+        """
         if not self._send_progress_dialog:
             self._send_progress_dialog = QProgressDialog("", "Cancel", 0, 100, self)
             self._send_progress_dialog.setWindowTitle("Sending File")
+            self._send_progress_dialog.setMinimumWidth(300)
             self._send_progress_dialog.setModal(True)
 
+            self._progress_handler = ProgressHandler(self._send_progress_dialog)
             self._send_progress_dialog.canceled.connect(
                 lambda: self._progress_handler.set_goal(-1)
             )
-            self._progress_handler.progress.connect(self._send_progress_dialog.setValue)
 
         self._send_file()
 
     def _center_window(self) -> None:
+        """
+        Centers the window on the screen (not working in Debian (why?))
+        """
         if self.isMaximized():
             return
 
