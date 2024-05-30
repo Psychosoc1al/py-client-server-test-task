@@ -151,6 +151,7 @@ def handle_file_reception(
                 finalize_file_reception(connection, directory)
                 cleanup_connection(connection, client_socket, epoll, descriptor_no)
         else:
+            logging.warning("Connection closed by client")
             cleanup_connection(connection, client_socket, epoll, descriptor_no)
     except BlockingIOError:
         return
@@ -175,6 +176,7 @@ def cleanup_connection(
         epoll: The epoll object for managing multiple connections (optional).
         descriptor_no: The file descriptor number for the connection (optional).
     """
+    logging.info(f"Closing connection from {client_socket.getpeername()}")
     if connection["file"]:
         connection["file"].close()
     if epoll and descriptor_no:
@@ -191,7 +193,9 @@ def finalize_file_reception(connection: dict[str], directory: str) -> None:
         directory: The directory where the file is saved.
     """
     connection["file"].close()
-    logging.info(f"File {connection['filename']} received and saved.")
+    logging.info(
+        f"Saved {connection['filename']} from {connection['socket'].getpeername()}."
+    )
     with open(os.path.join(directory, "file_attributes.txt"), "a") as attr_file:
         attr_file.write(f"{datetime.now().isoformat()},{connection['filename']}\n")
 
