@@ -2,6 +2,10 @@ import logging
 import os
 import socket
 
+import tqdm
+
+from gui_progress_handler import ProgressHandler
+
 
 def send_metadata(file_path: str, client_socket: socket.socket) -> str:
     """
@@ -35,7 +39,9 @@ def send_metadata(file_path: str, client_socket: socket.socket) -> str:
     return filename
 
 
-def send_file(file_path: str, host: str, port: int) -> None:
+def send_file(
+    file_path: str, host: str, port: int, gui_progress_handler: ProgressHandler = None
+) -> None:
     """
     Send a file to a server.
 
@@ -46,6 +52,7 @@ def send_file(file_path: str, host: str, port: int) -> None:
         file_path: The path of the file to be sent.
         host: The IP address of the server.
         port: The port number of the server.
+        gui_progress_handler: The GUI progress handler for updating the progress bar of sending the file.
 
     Raises:
         socket.error: If the connection to the server cannot be established.
@@ -62,8 +69,22 @@ def send_file(file_path: str, host: str, port: int) -> None:
         filename = send_metadata(file_path, client_socket)
 
         read_size = int(os.getenv("CONNECTION_BUFSIZE"))
-        with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(read_size), b""):
+        file_size = os.path.getsize(file_path)
+
+        if gui_progress_handler:
+            gui_progress_handler.set_goal(file_size)
+
+        with open(file_path, "rb") as f, tqdm.tqdm(
+            desc="Sending file", total=file_size, ncols=80, unit="B", unit_scale=True
+        ) as pbar:
+            while True:
+                chunk = f.read(read_size)
+                if not chunk:
+                    break
                 client_socket.sendall(chunk)
+                pbar.update(read_size)
+
+                if gui_progress_handler:
+                    gui_progress_handler.update_progress(read_size)
 
         logging.info(f"File {filename} sent to server.")

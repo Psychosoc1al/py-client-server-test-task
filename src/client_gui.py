@@ -9,9 +9,11 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QWidget,
     QApplication,
+    QProgressDialog,
 )
 
 import client_cli
+from gui_progress_handler import ProgressHandler
 
 
 class FileTransferClientGUI(QMainWindow):
@@ -23,6 +25,9 @@ class FileTransferClientGUI(QMainWindow):
         self._init_ui()
         self._center_window()
 
+        self._send_progress_dialog: QProgressDialog | None = None
+        self._progress_handler = ProgressHandler()
+
         self.show()
 
     def _init_ui(self) -> None:
@@ -32,38 +37,38 @@ class FileTransferClientGUI(QMainWindow):
         self.setWindowTitle("File Transfer Client")
         self.setFixedSize(300, 300)
 
-        self.main_widget = QWidget()
+        self.main_widget = QWidget(self)
         layout = QVBoxLayout()
 
-        self.file_label = QLabel("File:")
-        self.file_input = QLineEdit(self)
-        self.file_input.textChanged.connect(lambda _: self._handle_button_state())
+        self._file_label = QLabel("File:", self.main_widget)
+        self._file_input = QLineEdit(self.main_widget)
+        self._file_input.textChanged.connect(lambda _: self._handle_button_state())
 
-        self.browse_button = QPushButton("Browse", self)
-        self.browse_button.clicked.connect(self._browse_file)
+        self._browse_button = QPushButton("Browse", self.main_widget)
+        self._browse_button.clicked.connect(self._browse_file)
 
-        self.host_label = QLabel("Host:")
-        self.host_input = QLineEdit(self)
-        self.host_input.setPlaceholderText("127.0.0.1 or example.com")
-        self.host_input.textChanged.connect(lambda _: self._handle_button_state())
+        self._host_label = QLabel("Host:", self.main_widget)
+        self._host_input = QLineEdit(self.main_widget)
+        self._host_input.setPlaceholderText("127.0.0.1 or example.com")
+        self._host_input.textChanged.connect(lambda _: self._handle_button_state())
 
-        self.port_label = QLabel("Port:")
-        self.port_input = QLineEdit(self)
-        self.port_input.setPlaceholderText("12345")
-        self.port_input.textChanged.connect(lambda _: self._handle_button_state())
+        self._port_label = QLabel("Port:", self.main_widget)
+        self._port_input = QLineEdit(self.main_widget)
+        self._port_input.setPlaceholderText("12345")
+        self._port_input.textChanged.connect(lambda _: self._handle_button_state())
 
-        self.send_button = QPushButton("Send", self)
-        self.send_button.clicked.connect(self._send_file)
-        self.send_button.setDisabled(True)
+        self._send_button = QPushButton("Send", self.main_widget)
+        self._send_button.clicked.connect(self._handle_button_click)
+        self._send_button.setDisabled(True)
 
-        layout.addWidget(self.file_label)
-        layout.addWidget(self.file_input)
-        layout.addWidget(self.browse_button)
-        layout.addWidget(self.host_label)
-        layout.addWidget(self.host_input)
-        layout.addWidget(self.port_label)
-        layout.addWidget(self.port_input)
-        layout.addWidget(self.send_button)
+        layout.addWidget(self._file_label)
+        layout.addWidget(self._file_input)
+        layout.addWidget(self._browse_button)
+        layout.addWidget(self._host_label)
+        layout.addWidget(self._host_input)
+        layout.addWidget(self._port_label)
+        layout.addWidget(self._port_input)
+        layout.addWidget(self._send_button)
 
         self.main_widget.setLayout(layout)
         self.setCentralWidget(self.main_widget)
@@ -77,7 +82,7 @@ class FileTransferClientGUI(QMainWindow):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open File")
 
         if file_name:
-            self.file_input.setText(file_name)
+            self._file_input.setText(file_name)
 
     def _send_file(self) -> None:
         """
@@ -85,13 +90,19 @@ class FileTransferClientGUI(QMainWindow):
 
         Displays a success or error message based on the result of the file transfer.
         """
-        file_path = self.file_input.text()
-        host = self.host_input.text()
-        port = int(self.port_input.text())
+
+        file_path = self._file_input.text()
+        host = self._host_input.text()
+        port = int(self._port_input.text())
 
         try:
-            client_cli.send_file(file_path, host, port)
-            QMessageBox.information(self, "Success", "File sent successfully.")
+            self._send_progress_dialog.show()
+
+            client_cli.send_file(file_path, host, port, self._progress_handler)
+
+            QMessageBox.information(self, "Success", "File sent successfully")
+        except InterruptedError as e:
+            QMessageBox.warning(self, "Warning", str(e))
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to send file: {e}")
 
@@ -101,10 +112,27 @@ class FileTransferClientGUI(QMainWindow):
 
         The send button is enabled only if the file, host, and port fields are not empty.
         """
-        if self.file_input.text() and self.host_input.text() and self.port_input.text():
-            self.send_button.setEnabled(True)
+        if (
+            self._file_input.text()
+            and self._host_input.text()
+            and self._port_input.text()
+        ):
+            self._send_button.setEnabled(True)
         else:
-            self.send_button.setDisabled(True)
+            self._send_button.setDisabled(True)
+
+    def _handle_button_click(self) -> None:
+        if not self._send_progress_dialog:
+            self._send_progress_dialog = QProgressDialog("", "Cancel", 0, 100, self)
+            self._send_progress_dialog.setWindowTitle("Sending File")
+            self._send_progress_dialog.setModal(True)
+
+            self._send_progress_dialog.canceled.connect(
+                lambda: self._progress_handler.set_goal(-1)
+            )
+            self._progress_handler.progress.connect(self._send_progress_dialog.setValue)
+
+        self._send_file()
 
     def _center_window(self) -> None:
         if self.isMaximized():
