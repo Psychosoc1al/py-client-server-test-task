@@ -21,7 +21,7 @@ def main_cli(file_path: str, host: str, port: int) -> None:
 def main_gui(icon_dir: str) -> None:
     app = QApplication([])
     app.setWindowIcon(QIcon(os.path.join(icon_dir, "icons/client.ico")))
-    client_gui.FileTransferClientGUI()
+    _ = client_gui.FileTransferClientGUI()
 
     app.exec()
 

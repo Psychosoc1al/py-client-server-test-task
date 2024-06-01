@@ -35,7 +35,7 @@ def send_metadata(file_path: str, client_socket: socket.socket) -> str:
     client_socket.sendall(metadata_length)
     client_socket.sendall(file_info.encode())
 
-    logging.info(f"File {filename} metadata sent to server.")
+    logging.info(f"File {filename} metadata sent to server")
     return filename
 
 
@@ -56,16 +56,13 @@ def send_file(
         gui_progress_handler: The GUI progress handler for updating the progress bar of sending the file.
 
     Raises:
-        socket.error: If the connection to the server cannot be established.
+        FileNotFoundError: If the file to be sent does not exist.
+        ConnectionResetError: If the server fails to receive the file.
 
     Notes:
         CONNECTION_BUFSIZE is an environment variable that specifies the buffer size
         for the connection. Must be set before running the script (see .env).
     """
-    if not os.path.exists(file_path):
-        logging.error(f"File {file_path} does not exist.")
-        return
-
     with socket.create_connection((host, port)) as client_socket:
         filename = send_metadata(file_path, client_socket)
 
@@ -75,17 +72,26 @@ def send_file(
         if gui_progress_handler:
             gui_progress_handler.set_goal(file_size)
 
+        offset = 0
         with open(file_path, "rb") as f, tqdm.tqdm(
             desc="Sending file", total=file_size, ncols=80, unit="B", unit_scale=True
         ) as pbar:
-            while True:
-                chunk = f.read(read_size)
-                if not chunk:
-                    break
-                client_socket.sendall(chunk)
-                pbar.update(read_size)
+            while offset < file_size:
+                sent = client_socket.sendfile(f, offset, read_size * 4)
+                if not sent:
+                    raise ConnectionResetError(f"Server failed to receive {filename}")
+                offset += sent
+                pbar.update(sent)
 
                 if gui_progress_handler:
-                    gui_progress_handler.update_progress(len(chunk))
+                    gui_progress_handler.update_progress(sent)
 
-        logging.info(f"File {filename} sent to server.")
+        success = client_socket.recv(1)
+        client_socket.close()
+
+        if not success:
+            raise ConnectionResetError(f"Server failed to receive {filename}")
+
+        logging.info(f"File {filename} sent successfully")
+        if gui_progress_handler:
+            gui_progress_handler.finish()

@@ -150,7 +150,9 @@ def handle_file_reception(
             connection["received"] += len(chunk)
             if connection["received"] == connection["filesize"]:
                 finalize_file_reception(connection, directory)
-                cleanup_connection(connection, client_socket, epoll, descriptor_no)
+                cleanup_connection(
+                    connection, client_socket, epoll, descriptor_no, True
+                )
         else:
             logging.warning(
                 f"Connection closed by client: {client_socket.getpeername()}"
@@ -169,6 +171,7 @@ def cleanup_connection(
     client_socket: socket.socket,
     epoll: select.epoll = None,
     descriptor_no: int = None,
+    success: bool = False,
 ) -> None:
     """
     Cleans up the connection by closing the file and the client socket,
@@ -179,12 +182,15 @@ def cleanup_connection(
         client_socket: The socket connected to the client.
         epoll: The epoll object for managing multiple connections (optional).
         descriptor_no: The file descriptor number for the connection (optional).
+        success: A flag indicating whether the file reception was successful.
     """
     logging.info(f"Closing connection from {client_socket.getpeername()}")
     if connection["file"]:
         connection["file"].close()
     if epoll and descriptor_no:
         epoll.unregister(descriptor_no)
+    if success:
+        client_socket.sendall(b"1")
     client_socket.close()
 
 
@@ -206,7 +212,7 @@ def finalize_file_reception(connection: dict[str], directory: str) -> None:
             (datetime.now().isoformat(), connection["filename"])
         )
     logging.info(
-        f"Saved {connection['filename']} from {connection['socket'].getpeername()}."
+        f"Saved {connection['filename']} from {connection['socket'].getpeername()}"
     )
 
 

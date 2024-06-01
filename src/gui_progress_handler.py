@@ -40,12 +40,9 @@ class ProgressHandler(QThread):
             InterruptedError: If the final value is -1, indicating the process was cancelled by the user.
         """
         if self._final_value == -1:
-            raise InterruptedError("File transfer cancelled by user.")
+            raise InterruptedError("File transfer cancelled by user")
 
         if self._current_percent == 0:
-            self._current_percent += (
-                increment / self._final_value * 100
-            )  # function is not called for the last block, so we handle it at the start
             self._progress_dialog.show()
 
         self._current_percent += increment / self._final_value * 100
@@ -53,6 +50,9 @@ class ProgressHandler(QThread):
 
         if self._previous_percent_int != new_percent_int:
             self._progress_dialog.setValue(
-                new_percent_int if new_percent_int < 100 else 100
-            )  # trick to handle tiny files whose percent sometimes go crazy
+                min(new_percent_int, 99)
+            )  # a trick to handle waiting the server response without closing the dialog
             self._previous_percent_int = new_percent_int
+
+    def finish(self):
+        self._progress_dialog.setValue(100)
