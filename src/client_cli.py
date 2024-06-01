@@ -86,6 +86,6 @@ def send_file(
                 pbar.update(read_size)
 
                 if gui_progress_handler:
-                    gui_progress_handler.update_progress(read_size)
+                    gui_progress_handler.update_progress(len(chunk))
 
         logging.info(f"File {filename} sent to server.")
