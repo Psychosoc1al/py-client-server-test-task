@@ -3,7 +3,7 @@
 # Uses WSL with Debian 12 installed to build binaries
 wsl -e bash -c "
 source ../.venv/debian-venv/bin/activate &&
-python -m PyInstaller \
+pyinstaller \
     --clean \
     --onefile \
     --add-data=../.env:. \
@@ -11,14 +11,9 @@ python -m PyInstaller \
     --specpath=../build \
     --workpath=../build \
     --distpath=../Debian-12-dist \
-    ../src/server.py
-"
-
-Write-Output `n`n
-
-wsl -e bash -c "
-source ../.venv/debian-venv/bin/activate &&
-python -m PyInstaller \
+    ../src/server.py && \
+echo $'\n\n' && \
+pyinstaller \
     --clean \
     --onefile \
     --add-data=../.env:. \
