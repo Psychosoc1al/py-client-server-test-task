@@ -9,14 +9,11 @@ RUN apt update && \
     apt install -y python3-pyqt6 && \
     apt clean
 
-# Install PyInstaller
-RUN pip3 install pyinstaller
-
 # Set the working directory
 WORKDIR /app
 
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# Command to run PyInstaller
-CMD ["pyinstaller", "--onefile", "your_script.py"]
+# Install PyInstaller
+RUN pip install -r requirements.txt
