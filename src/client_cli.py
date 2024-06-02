@@ -4,7 +4,7 @@ import socket
 
 import tqdm
 
-from gui_progress_handler import ProgressHandler
+import gui_progress_handler
 
 
 def send_metadata(file_path: str, client_socket: socket.socket) -> str:
@@ -40,7 +40,10 @@ def send_metadata(file_path: str, client_socket: socket.socket) -> str:
 
 
 def send_file(
-    file_path: str, host: str, port: int, gui_progress_handler: ProgressHandler = None
+    file_path: str,
+    host: str,
+    port: int,
+    progress_handler: "gui_progress_handler.ProgressHandler" = None,
 ) -> None:
     """
     Send a file to a server.
@@ -53,7 +56,7 @@ def send_file(
         file_path: The path of the file to be sent.
         host: The IP address of the server.
         port: The port number of the server.
-        gui_progress_handler: The GUI progress handler for updating the progress bar of sending the file.
+        progress_handler: The GUI progress handler for updating the progress bar of sending the file.
 
     Raises:
         FileNotFoundError: If the file to be sent does not exist.
@@ -69,8 +72,8 @@ def send_file(
         read_size = int(os.getenv("CONNECTION_BUFSIZE"))
         file_size = os.path.getsize(file_path)
 
-        if gui_progress_handler:
-            gui_progress_handler.set_goal(file_size)
+        if progress_handler:
+            progress_handler.final_value = file_size
 
         offset = 0
         with open(file_path, "rb") as f, tqdm.tqdm(
@@ -83,8 +86,9 @@ def send_file(
                 offset += sent
                 pbar.update(sent)
 
-                if gui_progress_handler:
-                    gui_progress_handler.update_progress(sent)
+                if progress_handler and not progress_handler.update_progress(sent):
+                    client_socket.close()
+                    return
 
         success = client_socket.recv(1)
         client_socket.close()
@@ -93,5 +97,5 @@ def send_file(
             raise ConnectionResetError(f"Server failed to receive {filename}")
 
         logging.info(f"File {filename} sent successfully")
-        if gui_progress_handler:
-            gui_progress_handler.finish()
+        if progress_handler:
+            progress_handler.finish()
