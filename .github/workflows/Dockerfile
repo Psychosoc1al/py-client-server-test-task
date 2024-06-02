@@ -1,4 +1,3 @@
-# .github/workflows/Dockerfile
 FROM debian:latest
 
 # Install necessary packages
@@ -15,14 +14,10 @@ WORKDIR /app
 # Copy the requirements.txt into the container at /app
 COPY requirements.txt /app
 
-# Create a virtual environment
-RUN python3 -m venv /app/venv
-
-# Activate the virtual environment
-RUN source /app/venv/bin/activate
-
-# Install the required packages
-RUN pip install -r /app/requirements.txt
+# Create a virtual environment and install the required packages
+RUN python3 -m venv /app/venv && \
+    . /app/venv/bin/activate && \
+    pip install -r /app/requirements.txt
 
 # Copy the current directory contents into the container at /app
 COPY . /app
