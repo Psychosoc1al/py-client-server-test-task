@@ -55,8 +55,8 @@ jobs:
           --onefile
           --add-data=.env:.
           --add-data=icons/client.ico:icons
-          --icon=icons/server.ico 
-          src/server.py"
+          --icon=icons/client.ico 
+          src/client.py"
 
       - name: Build server binary
         run: >-
@@ -65,8 +65,8 @@ jobs:
           --clean
           --onefile
           --add-data=.env:.
-          --add-data=icons/client.ico:icons
-          --icon=icons/client.ico 
+          --add-data=icons/server.ico:icons
+          --icon=icons/server.ico 
           src/server.py"
 
       - name: Upload release assets
