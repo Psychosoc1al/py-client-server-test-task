@@ -7,6 +7,7 @@ pyinstaller \
     --clean \
     --onefile \
     --add-data=../.env:. \
+    --add-data=../icons/server.ico:icons \
     --icon=../icons/server.ico \
     --specpath=../build \
     --workpath=../build \

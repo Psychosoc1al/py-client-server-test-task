@@ -90,19 +90,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 50
+          fetch-depth: 0
+          submodules: recursive
 
       - name: Get latest release tag
         id: get_latest_tag
         run: |
-          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1` 2>/dev/null || echo "")
           echo "::set-output name=tag::$latest_tag"
 
       - name: Increment release tag
         id: increment_tag
         run: |
           latest_tag=${{ steps.get_latest_tag.outputs.tag }}
-          if [[ $latest_tag == "" ]]; then
+          if [[ -z $latest_tag ]]; then
             new_tag="v1.0.0"
           else
             IFS='.' read -r -a tag_parts <<< "${latest_tag/v/}"
