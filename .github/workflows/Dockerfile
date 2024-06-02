@@ -15,9 +15,7 @@ WORKDIR /app
 COPY requirements.txt /app
 
 # Create a virtual environment and install the required packages
-RUN python3 -m venv /app/venv && \
-    . /app/venv/bin/activate && \
-    pip install -r /app/requirements.txt
+RUN pip install -r /app/requirements.txt --break-system-packages
 
 # Copy the current directory contents into the container at /app
 COPY . /app

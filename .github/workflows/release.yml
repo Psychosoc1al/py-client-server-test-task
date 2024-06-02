@@ -50,8 +50,7 @@ jobs:
       - name: Build client binary
         run: >-
           docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task:latest
-          bash -c "ls .. && ls -d */ && ls * && cd && source app/venv/bin/activate && 
-          pyinstaller 
+          bash -c "pyinstaller 
           --clean
           --onefile
           --add-data=.env:.
@@ -62,8 +61,7 @@ jobs:
       - name: Build server binary
         run: >-
           docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task:latest
-          bash -c "source app/venv/bin/activate && 
-          pyinstaller 
+          bash -c "pyinstaller 
           --clean
           --onefile
           --add-data=.env:.
