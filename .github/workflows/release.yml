@@ -48,10 +48,28 @@ jobs:
         run: mkdir -p dist
 
       - name: Build client binary
-        run: docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task/py-client-server-test-task:latest pyinstaller --onefile client.py
+        run: >-
+          docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task:latest
+          source venv/bin/activate && 
+          pyinstaller 
+          --clean
+          --onefile
+          --add-data=.env:.
+          --add-data=icons/client.ico:icons
+          --icon=icons/server.ico 
+          src/server.py
 
       - name: Build server binary
-        run: docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task/py-client-server-test-task:latest pyinstaller --onefile server.py
+        run: >-
+          docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task:latest
+          source venv/bin/activate && 
+          pyinstaller 
+          --clean
+          --onefile
+          --add-data=.env:.
+          --add-data=icons/client.ico:icons
+          --icon=icons/client.ico 
+          src/server.py
 
       - name: Upload release assets
         id: upload-release
