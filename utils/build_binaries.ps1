@@ -10,7 +10,7 @@ pyinstaller \
     --icon=../icons/server.ico \
     --specpath=../build \
     --workpath=../build \
-    --distpath=../Debian-12-dist \
+    --distpath=../build/dist \
     ../src/server.py && \
 echo $'\n\n' && \
 pyinstaller \
@@ -21,6 +21,6 @@ pyinstaller \
     --icon=../icons/client.ico \
     --specpath=../build \
     --workpath=../build \
-    --distpath=../Debian-12-dist \
+    --distpath=../build/dist \
     ../src/client.py
 "
