@@ -18,10 +18,19 @@ pyinstaller \
     --clean \
     --onefile \
     --add-data=../.env:. \
+    --specpath=../build \
+    --workpath=../build \
+    --distpath=../build/dist \
+    ../src/client_cli.py && \
+echo $'\n\n' && \
+pyinstaller \
+    --clean \
+    --onefile \
+    --add-data=../.env:. \
     --add-data=../icons/client.ico:icons \
     --icon=../icons/client.ico \
     --specpath=../build \
     --workpath=../build \
     --distpath=../build/dist \
-    ../src/client.py
+    ../src/client_gui.py
 "

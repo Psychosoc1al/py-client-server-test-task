@@ -48,7 +48,7 @@ jobs:
       - name: Create output directories
         run: mkdir -p dist
 
-      - name: Build client binary
+      - name: Build client GUI binary
         run: >-
           docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task:latest
           bash -c "pyinstaller 
@@ -56,7 +56,16 @@ jobs:
           --onefile
           --add-data=.env:.
           --add-data=icons/client.ico:icons
-          src/client.py"
+          src/client_gui.py"
+
+      - name: Build client CLI binary
+        run: >-
+          docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task:latest
+          bash -c "pyinstaller 
+          --clean
+          --onefile
+          --add-data=.env:.
+          src/client_cli.py"
 
       - name: Build server binary
         run: >-
@@ -74,7 +83,8 @@ jobs:
         with:
           name: binaries
           path: |
-            dist/client
+            dist/client_gui
+            dist/client_cli
             dist/server
 
   release:
@@ -126,15 +136,26 @@ jobs:
           name: binaries
           path: dist
 
-      - name: Upload client binary to release
-        id: upload_client_asset
+      - name: Upload client GUI binary to release
+        id: upload_client_gui_asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/client
-          asset_name: client
+          asset_path: dist/client_gui
+          asset_name: client_gui
+          asset_content_type: application/octet-stream
+
+      - name: Upload client CLI binary to release
+        id: upload_client_cli_asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/client_cli
+          asset_name: client_cli
           asset_content_type: application/octet-stream
 
       - name: Upload server binary to release
