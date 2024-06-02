@@ -87,13 +87,16 @@ jobs:
           name: binaries
           path: dist
 
-      - name: Get latest tag
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Get latest release tag
         id: get_latest_tag
         run: |
           latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
           echo "::set-output name=tag::$latest_tag"
 
-      - name: Increment tag
+      - name: Increment release tag
         id: increment_tag
         run: |
           latest_tag=${{ steps.get_latest_tag.outputs.tag }}
