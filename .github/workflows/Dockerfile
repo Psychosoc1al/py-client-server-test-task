@@ -13,10 +13,10 @@ RUN apt update && \
 WORKDIR /app
 
 # Copy the requirements.txt into the container at /app
-COPY requirements.txt /app/
+COPY requirements.txt /app
 
 # Install PyInstaller
-RUN pip install -r requirements.txt
+RUN pip install -r /app/requirements.txt
 
 # Copy the current directory contents into the container at /app
 COPY . /app
