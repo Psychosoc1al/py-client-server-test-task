@@ -50,14 +50,26 @@ def receive_metadata(client_socket: socket.socket, directory: str) -> tuple[str,
     """
     try:
         metadata_size = int(os.getenv("METADATA_LENGTH_SIZE"))
-        metadata_length_data = client_socket.recv(metadata_size)
-        if not metadata_length_data:
-            raise ConnectionError("Socket closed prematurely")
+        metadata_length_data = b""
+        while len(metadata_length_data) < metadata_size:
+            try:
+                chunk = client_socket.recv(metadata_size - len(metadata_length_data))
+                if not chunk:
+                    raise ConnectionError("Socket closed prematurely")
+                metadata_length_data += chunk
+            except BlockingIOError:
+                continue
 
         metadata_length = int(metadata_length_data.decode().strip())
-        file_info_data = client_socket.recv(metadata_length)
-        if not file_info_data:
-            raise ConnectionError("Socket closed prematurely")
+        file_info_data = b""
+        while len(file_info_data) < metadata_length:
+            try:
+                chunk = client_socket.recv(metadata_length - len(file_info_data))
+                if not chunk:
+                    raise ConnectionError("Socket closed prematurely")
+                file_info_data += chunk
+            except BlockingIOError:
+                continue
 
         filename, filesize = file_info_data.decode().split("/")
         filename = generate_unique_filename(directory, filename)
@@ -184,14 +196,18 @@ def cleanup_connection(
         descriptor_no: The file descriptor number for the connection (optional).
         success: A flag indicating whether the file reception was successful.
     """
-    logging.info(f"Closing connection from {client_socket.getpeername()}")
-    if connection["file"]:
-        connection["file"].close()
-    if epoll and descriptor_no:
-        epoll.unregister(descriptor_no)
-    if success:
-        client_socket.sendall(b"1")
-    client_socket.close()
+    try:
+        if connection["file"]:
+            connection["file"].close()
+        if epoll and descriptor_no:
+            epoll.unregister(descriptor_no)
+        if success:
+            client_socket.sendall(b"1")
+
+        logging.info(f"Closed connection from {client_socket.getpeername()}")
+        client_socket.close()
+    except Exception as e:
+        logging.error(f"Error in cleanup: {e}")
 
 
 def finalize_file_reception(connection: dict[str], directory: str) -> None:
