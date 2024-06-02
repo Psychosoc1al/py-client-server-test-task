@@ -39,7 +39,7 @@ jobs:
           context: .
           file: .github/workflows/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}/py-client-server-test-task:latest
+          tags: ghcr.io/${{ github.repository }}:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
