@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - github-actions-integration
+  workflow_dispatch:
 
 jobs:
   build:
@@ -86,14 +87,37 @@ jobs:
           name: binaries
           path: dist
 
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo "::set-output name=tag::$latest_tag"
+
+      - name: Increment tag
+        id: increment_tag
+        run: |
+          latest_tag=${{ steps.get_latest_tag.outputs.tag }}
+          if [[ $latest_tag == "" ]]; then
+            new_tag="v1.0.0"
+          else
+            IFS='.' read -r -a tag_parts <<< "${latest_tag/v/}"
+            major=${tag_parts[0]}
+            minor=${tag_parts[1]}
+            patch=${tag_parts[2]}
+            new_patch=$((patch + 1))
+            new_tag="v${major}.${minor}.${new_patch}"
+          fi
+          echo "New tag: $new_tag"
+          echo "::set-output name=new_tag::$new_tag"
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v1.0.0
-          release_name: Release 1.0.0
+          tag_name: ${{ steps.increment_tag.outputs.new_tag }}
+          release_name: Release ${{ steps.increment_tag.outputs.new_tag }}
           draft: true
           prerelease: false
 
