@@ -340,7 +340,7 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        start_server(args.directory, args.host, args.port)
+        start_server(os.path.abspath(args.directory), args.host, args.port)
     except Exception as e:
         logging.error(f"Failed to start server: {e}")
 
