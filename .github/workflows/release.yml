@@ -50,7 +50,7 @@ jobs:
       - name: Build client binary
         run: >-
           docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task:latest
-          bash -c "pwd && ls -la && source app/venv/bin/activate && 
+          bash -c "ls .. && && ls -d */ && ls * && cd && source app/venv/bin/activate && 
           pyinstaller 
           --clean
           --onefile
