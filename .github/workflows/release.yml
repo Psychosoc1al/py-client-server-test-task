@@ -50,26 +50,26 @@ jobs:
       - name: Build client binary
         run: >-
           docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task:latest
-          . venv/bin/activate && 
+          bash -c "source venv/bin/activate && 
           pyinstaller 
           --clean
           --onefile
           --add-data=.env:.
           --add-data=icons/client.ico:icons
           --icon=icons/server.ico 
-          src/server.py
+          src/server.py"
 
       - name: Build server binary
         run: >-
           docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task:latest
-          . venv/bin/activate && 
+          bash -c "source venv/bin/activate && 
           pyinstaller 
           --clean
           --onefile
           --add-data=.env:.
           --add-data=icons/client.ico:icons
           --icon=icons/client.ico 
-          src/server.py
+          src/server.py"
 
       - name: Upload release assets
         id: upload-release
