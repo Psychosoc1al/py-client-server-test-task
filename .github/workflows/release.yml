@@ -118,7 +118,7 @@ jobs:
         with:
           tag_name: ${{ steps.increment_tag.outputs.new_tag }}
           release_name: Release ${{ steps.increment_tag.outputs.new_tag }}
-          draft: true
+          draft: false
           prerelease: false
 
       - name: Upload client binary to release
