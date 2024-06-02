@@ -1,6 +1,10 @@
 import logging
+import os
+import sys
 
+import dotenv
 import qdarktheme
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QLabel,
@@ -11,6 +15,7 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QWidget,
     QProgressDialog,
+    QApplication,
 )
 
 from gui_progress_handler import ProgressHandler
@@ -164,3 +169,32 @@ class FileTransferClientGUI(QMainWindow):
         self._suppress_progress_warning = True
         self._progress_handler.terminate()
         super().closeEvent(a0)
+
+
+def main() -> None:
+    try:
+        # The block below is necessary for loading .env file both in script and executable
+        external_data_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        if getattr(sys, "frozen", False):
+            # noinspection PyUnresolvedReferences,PyProtectedMember
+            external_data_dir = sys._MEIPASS
+        dotenv.load_dotenv(dotenv_path=os.path.join(external_data_dir, ".env"))
+
+        app = QApplication([])
+        app.setWindowIcon(QIcon(os.path.join(external_data_dir, "icons/client.ico")))
+        _ = FileTransferClientGUI()
+
+        app.exec()
+    except KeyboardInterrupt:
+        logging.info("Stopping client...")
+    except Exception as e:
+        logging.error(f"Client error: {e}")
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
+    main()

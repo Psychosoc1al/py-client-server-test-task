@@ -361,3 +361,5 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         logging.info("Stopping server...")
+    except Exception as e:
+        logging.error(f"Server error: {e}")

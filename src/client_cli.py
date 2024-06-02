@@ -1,10 +1,11 @@
+import argparse
 import logging
 import os
 import socket
+import sys
 
+import dotenv
 import tqdm
-
-import gui_progress_handler
 
 
 def send_metadata(file_path: str, client_socket: socket.socket) -> str:
@@ -39,12 +40,7 @@ def send_metadata(file_path: str, client_socket: socket.socket) -> str:
     return filename
 
 
-def send_file(
-    file_path: str,
-    host: str,
-    port: int,
-    progress_handler: "gui_progress_handler.ProgressHandler" = None,
-) -> None:
+def send_file(file_path: str, host: str, port: int, progress_handler=None) -> None:
     """
     Send a file to a server.
 
@@ -99,3 +95,35 @@ def send_file(
         logging.info(f"File {filename} sent successfully")
         if progress_handler:
             progress_handler.finish()
+
+
+def main() -> None:
+    # The block below is necessary for loading .env file both in script and executable
+    external_data_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    if getattr(sys, "frozen", False):
+        # noinspection PyUnresolvedReferences,PyProtectedMember
+        external_data_dir = sys._MEIPASS
+    dotenv.load_dotenv(dotenv_path=os.path.join(external_data_dir, ".env"))
+
+    parser = argparse.ArgumentParser(description="CLI or GUI File Transfer Client")
+    parser.add_argument("file_path", help="Path to the file to transfer")
+    parser.add_argument("host", help="Server IP address")
+    parser.add_argument("port", type=int, help="Server port")
+
+    args = parser.parse_args()
+
+    try:
+        send_file(args.file_path, args.host, args.port)
+    except KeyboardInterrupt:
+        logging.info("Stopping client...")
+    except Exception as e:
+        logging.error(f"Failed to send file: {e}")
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
+    main()

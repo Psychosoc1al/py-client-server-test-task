@@ -7,11 +7,21 @@ pyinstaller \
     --clean \
     --onefile \
     --add-data=../.env:. \
+    --add-data=../icons/server.ico:icons \
     --icon=../icons/server.ico \
     --specpath=../build \
     --workpath=../build \
-    --distpath=../Debian-12-dist \
+    --distpath=../build/dist \
     ../src/server.py && \
+echo $'\n\n' && \
+pyinstaller \
+    --clean \
+    --onefile \
+    --add-data=../.env:. \
+    --specpath=../build \
+    --workpath=../build \
+    --distpath=../build/dist \
+    ../src/client_cli.py && \
 echo $'\n\n' && \
 pyinstaller \
     --clean \
@@ -21,6 +31,6 @@ pyinstaller \
     --icon=../icons/client.ico \
     --specpath=../build \
     --workpath=../build \
-    --distpath=../Debian-12-dist \
-    ../src/client.py
+    --distpath=../build/dist \
+    ../src/client_gui.py
 "
