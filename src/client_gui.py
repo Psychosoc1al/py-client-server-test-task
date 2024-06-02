@@ -10,11 +10,9 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QMainWindow,
     QWidget,
-    QApplication,
     QProgressDialog,
 )
 
-import client_cli
 from gui_progress_handler import ProgressHandler
 
 
@@ -27,8 +25,8 @@ class FileTransferClientGUI(QMainWindow):
         """Initializes the FileTransferClientGUI class."""
         super().__init__()
         self._init_ui()
-        self._center_window()
 
+        self._suppress_progress_warning = False
         self.show()
 
     def _init_ui(self) -> None:
@@ -89,29 +87,6 @@ class FileTransferClientGUI(QMainWindow):
         if file_name:
             self._file_input.setText(file_name)
 
-    def _send_file(self) -> None:
-        """
-        Sends the selected file to the specified host and port.
-
-        Displays a success or error message based on the result of the file transfer.
-        """
-
-        file_path = self._file_input.text()
-        host = self._host_input.text()
-        port = int(self._port_input.text())
-
-        try:
-            client_cli.send_file(file_path, host, port, self._progress_handler)
-
-            QMessageBox.information(self, "Success", "File sent successfully")
-        except InterruptedError as e:
-            logging.warning(str(e))
-            QMessageBox.warning(self, "Warning", str(e))
-        except Exception as e:
-            self._send_progress_dialog.close()
-            logging.error(f"Failed to send file: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to send file: {e}")
-
     def _handle_button_state(self) -> None:
         """
         Enables or disables the send button based on the input fields.
@@ -134,28 +109,58 @@ class FileTransferClientGUI(QMainWindow):
         Displays a progress dialog while the file transfer is in progress.
         """
         if not self._send_progress_dialog:
-            self._send_progress_dialog = QProgressDialog("", "Cancel", 0, 100, self)
-            self._send_progress_dialog.setWindowTitle("Sending File")
-            self._send_progress_dialog.setMinimumWidth(300)
-            self._send_progress_dialog.setModal(True)
+            self._init_progress_dialog()
 
-            self._progress_handler = ProgressHandler(self._send_progress_dialog)
-            self._send_progress_dialog.canceled.connect(
-                lambda: self._progress_handler.set_goal(-1)
-            )
+        self._progress_handler.set_info_to_send(
+            self._file_input.text(), self._host_input.text(), self._port_input.text()
+        )
+        self._progress_handler.start()
 
-        self._send_file()
+    def _init_progress_dialog(self):
+        """Initializes the progress dialog. Sets handle functions for the progress dialog."""
 
-    def _center_window(self) -> None:
-        """
-        Centers the window on the screen (not working in Debian (why?))
-        """
-        if self.isMaximized():
-            return
+        def __handle_progress_change(value) -> None:
+            self._send_progress_dialog.setValue(value)
 
-        screen_geometry = QApplication.primaryScreen().availableGeometry()
-        window_geometry = self.frameGeometry()
-        center_point = screen_geometry.center()
-        window_geometry.moveCenter(center_point)
+            if value == -1:
+                self._send_progress_dialog.show()
+                self._send_progress_dialog.cancel_button.setEnabled(True)
+            elif value == 99:
+                self._send_progress_dialog.cancel_button.setDisabled(True)
+            elif value == 100:
+                QMessageBox.information(self, "Success", "File sent successfully")
 
-        self.move(window_geometry.topLeft())
+        def __handle_progress_error(error_text: str) -> None:
+            self._suppress_progress_warning = True
+            self._send_progress_dialog.close()
+            logging.error(f"Failed to send file: {error_text}")
+            QMessageBox.critical(self, "Error", f"Failed to send file: {error_text}")
+            self._suppress_progress_warning = False
+
+        def __handle_cancel_click() -> None:
+            if self._suppress_progress_warning:
+                return
+
+            self._send_progress_dialog.hide()
+            self._progress_handler.final_value = -1
+            QMessageBox.warning(self, "Warning", "File transfer canceled")
+            logging.warning("File transfer canceled")
+
+        self._send_progress_dialog = QProgressDialog("", "Cancel", 0, 100, self)
+        self._send_progress_dialog.setWindowTitle("Sending File")
+        self._send_progress_dialog.setMinimumWidth(300)
+        self._send_progress_dialog.setModal(True)
+        self._send_progress_dialog.cancel_button = self._send_progress_dialog.findChild(
+            QPushButton
+        )
+
+        self._progress_handler = ProgressHandler(self._send_progress_dialog)
+        self._progress_handler.progress_change.connect(__handle_progress_change)
+        self._progress_handler.error.connect(__handle_progress_error)
+        self._send_progress_dialog.canceled.connect(__handle_cancel_click)
+
+    def closeEvent(self, a0):
+        logging.info("Closing client GUI...")
+        self._suppress_progress_warning = True
+        self._progress_handler.terminate()
+        super().closeEvent(a0)
