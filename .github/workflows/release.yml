@@ -39,7 +39,7 @@ jobs:
           context: .
           file: .github/workflows/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest
+          tags: ghcr.io/psychosoc1al/py-client-server-test-task:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -47,10 +47,10 @@ jobs:
         run: mkdir -p dist
 
       - name: Build client binary
-        run: docker run --rm -v ${{ github.workspace }}:/app ghcr.io/${{ github.repository }}/py-client-server-test-task:latest pyinstaller --onefile client.py
+        run: docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task/py-client-server-test-task:latest pyinstaller --onefile client.py
 
       - name: Build server binary
-        run: docker run --rm -v ${{ github.workspace }}:/app ghcr.io/${{ github.repository }}/py-client-server-test-task:latest pyinstaller --onefile server.py
+        run: docker run --rm -v ${{ github.workspace }}:/app ghcr.io/psychosoc1al/py-client-server-test-task/py-client-server-test-task:latest pyinstaller --onefile server.py
 
       - name: Upload release assets
         id: upload-release
